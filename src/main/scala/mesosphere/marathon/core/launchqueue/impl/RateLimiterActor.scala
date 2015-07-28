@@ -28,10 +28,10 @@ private[launchqueue] object RateLimiterActor {
     rateLimiter: RateLimiter,
     taskTracker: TaskTracker,
     appRepository: AppRepository,
-    updateReceiver: ActorRef,
+    launchQueueRef: ActorRef,
     taskStatusObservables: TaskStatusObservables): Props =
     Props(new RateLimiterActor(
-      rateLimiter, taskTracker, appRepository, updateReceiver, taskStatusObservables
+      rateLimiter, taskTracker, appRepository, launchQueueRef, taskStatusObservables
     ))
 
   case class DelayUpdate(app: AppDefinition, delayUntil: Timestamp)
@@ -50,7 +50,7 @@ private class RateLimiterActor private (
     rateLimiter: RateLimiter,
     taskTracker: TaskTracker,
     appRepository: AppRepository,
-    updateReceiver: ActorRef,
+    launchQueueRef: ActorRef,
     taskStatusObservables: TaskStatusObservables) extends Actor with ActorLogging {
   var taskStatusSubscription: Subscription = _
   var cleanup: Cancellable = _
@@ -89,13 +89,13 @@ private class RateLimiterActor private (
 
     case AddDelay(app) =>
       rateLimiter.addDelay(app)
-      updateReceiver ! DelayUpdate(app, rateLimiter.getDelay(app))
+      launchQueueRef ! DelayUpdate(app, rateLimiter.getDelay(app))
 
     case DecreaseDelay(app) => // ignore for now
 
     case ResetDelay(app) =>
       rateLimiter.resetDelay(app)
-      updateReceiver ! DelayUpdate(app, rateLimiter.getDelay(app))
+      launchQueueRef ! DelayUpdate(app, rateLimiter.getDelay(app))
       sender() ! ResetDelayResponse
   }
 

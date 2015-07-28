@@ -6,6 +6,7 @@ import akka.util.Timeout
 import mesosphere.marathon.Protos.MarathonTask
 import mesosphere.marathon.core.base.ConstantClock
 import mesosphere.marathon.core.launchqueue.LaunchQueue.QueuedTaskCount
+import mesosphere.marathon.core.launchqueue.LaunchQueueConfig
 import mesosphere.marathon.core.matcher.base.OfferMatcher
 import OfferMatcher.MatchedTasks
 import mesosphere.marathon.core.matcher.manager.OfferMatcherManager
@@ -143,6 +144,7 @@ class AppTaskLauncherActorTest extends MarathonSpec {
     var scheduleCalled = false
     val props = Props(
       new AppTaskLauncherActor(
+        launchQueueConfig,
         offerMatcherManager, clock, taskFactory, taskStatusObservable, taskTracker, rateLimiterActor.ref,
         app, tasksToLaunch = 1
       ) {
@@ -265,6 +267,7 @@ class AppTaskLauncherActorTest extends MarathonSpec {
 
   private[this] implicit val timeout: Timeout = 3.seconds
   private[this] implicit var actorSystem: ActorSystem = _
+  private[this] var launchQueueConfig: LaunchQueueConfig = _
   private[this] var offerMatcherManager: OfferMatcherManager = _
   private[this] var clock: ConstantClock = _
   private[this] var taskFactory: TaskFactory = _
@@ -275,6 +278,7 @@ class AppTaskLauncherActorTest extends MarathonSpec {
 
   private[this] def createLauncherRef(instances: Int): ActorRef = {
     val props = AppTaskLauncherActor.props(
+      launchQueueConfig,
       offerMatcherManager, clock, taskFactory, taskStatusObservable, taskTracker, rateLimiterActor.ref) _
     actorSystem.actorOf(
       props(app, instances),
@@ -285,6 +289,8 @@ class AppTaskLauncherActorTest extends MarathonSpec {
   before {
     actorSystem = ActorSystem()
     offerMatcherManager = mock[OfferMatcherManager]
+    launchQueueConfig = new LaunchQueueConfig {}
+    launchQueueConfig.afterInit()
     clock = ConstantClock()
     taskFactory = mock[TaskFactory]
     appStatusObservable = PublishSubject[TaskStatusUpdate]()

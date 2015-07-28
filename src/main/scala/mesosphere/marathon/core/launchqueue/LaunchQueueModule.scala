@@ -28,7 +28,7 @@ class LaunchQueueModule(
     taskTracker: TaskTracker,
     taskFactory: TaskFactory) {
 
-  private[this] val taskQueueActorRef: ActorRef = {
+  private[this] val launchQueueActorRef: ActorRef = {
     val props = LaunchQueueActor.props(config, appActorProps)
     leadershipModule.startWhenLeader(props, "launchQueue")
   }
@@ -36,14 +36,15 @@ class LaunchQueueModule(
 
   private[this] val rateLimiterActor: ActorRef = {
     val props = RateLimiterActor.props(
-      rateLimiter, taskTracker, appRepository, taskQueueActorRef, taskStatusObservables)
+      rateLimiter, taskTracker, appRepository, launchQueueActorRef, taskStatusObservables)
     leadershipModule.startWhenLeader(props, "rateLimiter")
   }
 
-  val taskQueue: LaunchQueue = new LaunchQueueDelegate(config, taskQueueActorRef, rateLimiterActor)
+  val taskQueue: LaunchQueue = new LaunchQueueDelegate(config, launchQueueActorRef, rateLimiterActor)
 
   private[this] def appActorProps(app: AppDefinition, count: Int): Props =
     AppTaskLauncherActor.props(
+      config,
       subOfferMatcherManager,
       clock,
       taskFactory,
