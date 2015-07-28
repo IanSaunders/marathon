@@ -176,10 +176,83 @@ documentation for more details on how Docker handles networking.
 
 ### Using a Private Docker Repository
 
+#### Registry  1.0 - Docker pre 1.6 
 To supply credentials to pull from a private repository, add a `.dockercfg` to
 the `uris` field of your app. The `$HOME` environment variable will then be set
 to the same value as `$MESOS_SANDBOX` so Docker can automatically pick up the
 config file.
+
+
+#### Registry  2.0 - Docker 1.6 and up
+
+To supply credentials to pull from a private repository, add a `docker.tar.gz` file to
+the `uris` field of your app. The `docker.tar.gz` file should include the `.docker` folder and the contained `.docker/config.json` 
+
+
+##### Step 1: Tar/Gzip credentials
+
+1. Login to the private repository manually. Login creates a `.docker` folder and a `.docker/config.json` in the users home directoy
+
+    ```bash
+    $ docker login some.docker.host.com
+      Username: foo 
+      Password: 
+      Email: foo@bar.com
+    ```
+
+1. Tar this folder and it's contents
+
+    ```bash
+    $ cd ~
+    $ tar czf docker.tar.gz .docker
+    ```
+1. Check you have both files in the tar
+
+    ```bash
+    $ tar -tvf ~/docker.tar.gz
+
+      drwx------ root/root         0 2015-07-28 02:54 .docker/
+      -rw------- root/root       114 2015-07-28 01:31 .docker/config.json
+    ``` 
+
+1. Put the gziped file in location which can be retrieved via mesos/marathon (optional)
+
+    ```bash
+    $ cp docker.tar.gz /etc/
+    ```
+
+##### Step 2: Mesos/Marathon config
+
+1. Add the path to the gziped login credentials to your marathon app definition
+
+    ```bash
+    "uris": [
+       "file:///etc/docker.tar.gz"
+    ]
+    ```
+
+1. For example:
+
+    ```json
+    {  
+      "id": "/some/name/or/id",
+      "cpus": 1,
+      "mem": 1024,
+      "instances": 1,
+      "container": {
+        "type": "DOCKER",
+        "docker": {
+          "image": "some.docker.host.com/namespace/repo",
+          "network": "HOST"
+        }
+      },
+      "uris":  [
+          "file:///etc/docker.tar.gz"
+      ]
+    }
+    ```
+
+1. Docker image should now correctly pull.
 
 ### Advanced Usage
 
